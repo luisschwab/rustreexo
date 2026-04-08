@@ -12,7 +12,7 @@ use rustreexo::node_hash::BitcoinNodeHash;
 use rustreexo::proof::Proof;
 use rustreexo::stump::Stump;
 
-fn generate_test_hashes(count: usize, seed: u64) -> Vec<BitcoinNodeHash> {
+pub(crate) fn generate_test_hashes(count: usize, seed: u64) -> Vec<BitcoinNodeHash> {
     let mut rng = StdRng::seed_from_u64(seed);
     (0..count)
         .map(|_| {
