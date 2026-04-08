@@ -779,7 +779,7 @@ impl<Hash: AccumulatorHash> Pollard<Hash> {
         Self {
             roots,
             leaves: 0,
-            leaf_map: HashMap::new(),
+            leaf_map: HashMap::with_hasher(Default::default()),
         }
     }
 
@@ -807,7 +807,7 @@ impl<Hash: AccumulatorHash> Pollard<Hash> {
         Self {
             roots,
             leaves,
-            leaf_map: HashMap::new(),
+            leaf_map: HashMap::with_hasher(Default::default()),
         }
     }
 
