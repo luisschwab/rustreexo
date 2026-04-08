@@ -1,13 +1,13 @@
-# imports
+# Import
 reorder_imports = true
 imports_granularity = "Item"
 group_imports = "StdExternalCrate"
 
-# lines
-newline_style = "Unix"
+# Macros
+format_macro_matchers = true
 
-# comments
+# Comments
 format_code_in_doc_comments = true
 
-# macros
-format_macro_matchers = true
+# Line
+newline_style = "Unix"
