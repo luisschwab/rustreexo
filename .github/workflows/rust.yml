@@ -1,91 +1,78 @@
-name: Rust
-
-permissions:
-  contents: read
-
-env:
-  CARGO_TERM_COLOR: always
+name: Rust CI
 
 on: [push, pull_request]
 
+permissions: {}
+env:
+    CARGO_TERM_COLOR: always
+    RUST_BACKTRACE: 1
+
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    check:
+        name: Check - ${{ matrix.task }}
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                task: [fmt --check, lint, docs]
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+              with:
+                  persist-credentials: false
 
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
+            - name: Setup build cache
+              uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
-      - name: Install nightly Rust toolchain
-        run: rustup toolchain install nightly --component clippy,rustfmt --no-self-update
+            - name: Setup cargo-rbmt
+              uses: rust-bitcoin/rust-bitcoin-maintainer-tools/.github/actions/setup-rbmt@6560b728ae6a81af9d92713b630ba26772fbd970
 
-      - name: Setup just
-        uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b # v3.1.0
+            - name: Run ${{ matrix.task }}
+              run: cargo rbmt ${{ matrix.task }}
 
-      - name: Run just check
-        run: just check
+    test:
+        name: Test - ${{ matrix.toolchain }} toolchain, ${{ matrix.lockfile }} deps
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                toolchain: [stable, nightly, msrv]
+                lockfile: [minimal, recent]
+                exclude:
+                    - toolchain: msrv
+                      lockfile: recent
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+              with:
+                  persist-credentials: false
 
-  test-msrv:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
+            - name: Setup build cache
+              uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
-      - name: Install MSRV Rust toolchain (1.74.0)
-        run: rustup toolchain install 1.74.0 --no-self-update
+            - name: Setup cargo-rbmt
+              uses: rust-bitcoin/rust-bitcoin-maintainer-tools/.github/actions/setup-rbmt@6560b728ae6a81af9d92713b630ba26772fbd970
 
-      - name: Setup just
-        uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b # v3.1.0
+            - name: Run tests
+              run: cargo rbmt test --toolchain ${{ matrix.toolchain }} --lock-file ${{ matrix.lockfile }}
 
-      - name: Run MSRV tests
-        run: just test-msrv
+    test-no-std:
+        name: Test - no-std, msrv toolchain, minimal deps
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+              with:
+                  persist-credentials: false
 
-  cross-testing:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        toolchain: [nightly, stable]
+            - name: Setup build cache
+              uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
-    runs-on: ${{ matrix.os }}
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
+            - name: Setup cargo-rbmt
+              uses: rust-bitcoin/rust-bitcoin-maintainer-tools/.github/actions/setup-rbmt@6560b728ae6a81af9d92713b630ba26772fbd970
 
-      - name: Install Rust toolchain
-        run: rustup toolchain install ${{ matrix.toolchain }} --component rustfmt,clippy --no-self-update
+            - name: Add no_std target
+              run: rustup target add thumbv7m-none-eabi --toolchain 1.74.0
 
-      - name: Show Rust toolchain
-        run: rustc +${{ matrix.toolchain }} -Vv
-
-      - name: Setup just
-        uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b # v3.1.0
-
-      - name: Run Tests
-        run: just test-${{ matrix.toolchain }}
-
-  no-std:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      # Common bare-metal Cortex-M target (no_std: `core` + `alloc`)
-      - name: Install MSRV Rust toolchain
-        run: |
-          rustup toolchain install 1.74.0 --no-self-update
-          rustup target add thumbv7em-none-eabi --toolchain 1.74.0
-
-      - name: Build for no_std target
-        shell: bash
-        run: |
-          cargo +1.74.0 build --lib --target thumbv7em-none-eabi --no-default-features
+            - name: Run no_std tests
+              run: cargo rbmt test --toolchain msrv --lock-file minimal
