@@ -1,0 +1,63 @@
+name: Performance Benchmark
+
+on:
+    push:
+    pull_request:
+    schedule:
+        - cron: "0 12 * * *"
+    workflow_dispatch:
+
+permissions: {}
+env:
+    CARGO_TERM_COLOR: always
+    RUST_BACKTRACE: 1
+
+jobs:
+    benchmark:
+        name: Run Performance Benchmarks
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+              with:
+                  persist-credentials: false
+
+            - name: Setup build cache
+              uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+
+            - name: Setup cargo-rbmt
+              uses: rust-bitcoin/rust-bitcoin-maintainer-tools/.github/actions/setup-rbmt@6560b728ae6a81af9d92713b630ba26772fbd970
+
+            - name: Display system and commit information
+              env:
+                  BRANCH_REF: ${{ github.ref_name }}
+                  COMMIT_SHA: ${{ github.sha }}
+              run: |
+                echo "Rust version: $(rustc --version)"
+                echo "CPU cores: $(nproc)"
+                echo "Memory: $(free -h)"
+                echo "Branch: $BRANCH_REF"
+                echo "Commit: $COMMIT_SHA"
+
+            - name: Run Benchmarks
+              run: cargo rbmt bench
+
+            - name: Summarize Benchmark Results
+              run: |
+                  echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  find target/criterion -name "estimates.json" -path "*/new/*" | sort | while read -r f; do
+                  name=$(echo "$f" | sed 's|target/criterion/||' | sed 's|/new/estimates.json||')
+                  slope=$(jq '.slope.point_estimate' "$f")
+                  echo "- \`$name\`: ${slope}ns" >> $GITHUB_STEP_SUMMARY
+                  done
+
+            - name: Upload HTML reports
+              uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+              with:
+                  name: benchmark-html-reports-${{ github.run_number }}
+                  path: target/criterion/
+                  retention-days: 30
