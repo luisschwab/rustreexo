@@ -1,69 +1,69 @@
-alias b  := build
-alias c  := check
-alias f  := fmt
-alias t  := test
-alias ts := test-stable
-alias tm := test-msrv
-alias tn := test-nightly
-alias p  := pre-push
+alias c := check
+alias cs := check-sigs
+alias d := doc
+alias do := doc-open
+alias f := fmt
+alias l := lock
+alias t := test
+alias tns := test-no-std
+alias p := pre-push
 
 _default:
+    @echo "> rustreexo"
+    @echo "> A Rust implementation of Utreexo\n"
     @just --list
 
-# Run benchmarks
-bench:
-    cargo bench
+[doc: "Run benchmarks: accumulator, proof, stump"]
+bench BENCH="":
+    cargo bench {{ if BENCH != "" { "--bench " + BENCH } else { "" } }}
 
-# Build with all features
-build:
-    cargo build --all-features
-
-# Check code formatting, compilation and linting
+[doc: "Check code formatting, compilation, and linting"]
 check:
-    cargo +nightly fmt --all --check
+    cargo rbmt fmt --check
+    cargo rbmt lint
+    cargo rbmt docs
+    RUSTFLAGS="--cfg=bench" cargo +nightly check --benches
 
-    cargo +nightly check --no-default-features --all-targets
-    cargo +nightly check --all-features --all-targets
-    cargo +nightly clippy --no-default-features --all-targets -- -D warnings
-    cargo +nightly clippy --all-features --all-targets -- -D warnings
+[doc: "Checks whether all commits in this branch are signed"]
+check-sigs:
+    #!/usr/bin/env bash
+    TOTAL=$(git log --pretty='tformat:%H' origin/main..HEAD | wc -l | tr -d ' ')
+    UNSIGNED=$(git log --pretty='tformat:%H %G?' origin/main..HEAD | grep " N$" | wc -l | tr -d ' ')
+    if [ "$UNSIGNED" -gt 0 ]; then
+        echo "⚠️ Unsigned commits in this branch [$UNSIGNED/$TOTAL]"
+        exit 1
+    else
+        echo "🔏 All commits in this branch are signed [$TOTAL/$TOTAL]"
+    fi
 
-    RUSTDOCFLAGS="-D warnings" cargo +nightly doc --no-deps --all-features
+[doc: "Generate documentation"]
+doc:
+    cargo rbmt docs
+    cargo doc --no-deps
 
-# Format code
+[doc: "Generate and open documentation"]
+doc-open:
+    cargo rbmt docs
+    cargo doc --no-deps --open
+
+[doc: "Format code"]
 fmt:
-    cargo +nightly fmt --all
+    cargo rbmt fmt
 
-# Run all tests with stable, nightly and MSRV (1.74.0) toolchains
+[doc: "Regenerate Cargo-recent.lock and Cargo-minimal.lock"]
+lock:
+    cargo rbmt lock
+
+[doc: "Run tests across all toolchains and lockfiles"]
 test:
-    @just test-stable
-    @just test-nightly
-    @just test-msrv
+    rustup target add thumbv7m-none-eabi
+    cargo rbmt test --toolchain stable --lock-file recent
+    cargo rbmt test --toolchain stable --lock-file minimal
 
-# Run all tests with a stable toolchain
-test-stable:
-    cargo +stable test --no-default-features
-    cargo +stable test --all-features
+[doc: "Run no_std build check with the MSRV toolchain (1.74.0)"]
+test-no-std:
+    rustup target add thumbv7m-none-eabi --toolchain 1.74.0
+    cargo rbmt test --toolchain msrv --lock-file minimal
 
-# Run all tests with a nightly toolchain
-test-nightly:
-    cargo +nightly test --no-default-features
-    cargo +nightly test --all-features
-
-# Run all tests on MSRV (1.74.0)
-test-msrv:
-    rm -f Cargo.lock
-    cargo update -p criterion --precise 0.5.1
-    cargo update -p rayon --precise 1.10.0
-    cargo update -p rayon-core --precise 1.12.1
-    cargo update -p serde_json --precise 1.0.81
-    cargo update -p serde --precise 1.0.160
-    cargo update -p half --precise 2.4.1
-    cargo update -p clap --precise 4.5.61
-    cargo update -p clap_lex --precise 1.0.0
-
-    cargo +1.74.0 test --no-default-features
-    cargo +1.74.0 test --all-features
-    rm Cargo.lock
-
-# Run pre-push suite: format, check, and test
-pre-push: fmt check test
+[doc: "Run pre-push suite: lock, fmt, check, test, and test-no-std"]
+pre-push: lock fmt check check-sigs test test-no-std
