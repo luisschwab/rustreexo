@@ -16,6 +16,7 @@
 
 use rustreexo::mem_forest::MemForest;
 use rustreexo::node_hash::AccumulatorHash;
+use rustreexo::prelude::io;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 /// We need a stateful wrapper around the actual hash, this is because we use those different
@@ -80,9 +81,9 @@ impl AccumulatorHash for CustomHash {
     // used for serialization, writes the hash to the writer
     //
     // if you don't want to use serialization, you can just return an error here.
-    fn write<W>(&self, writer: &mut W) -> std::io::Result<()>
+    fn write<W>(&self, writer: &mut W) -> io::Result<()>
     where
-        W: std::io::Write,
+        W: io::Write,
     {
         match self {
             Self::Hash(h) => writer.write_all(h),
@@ -94,9 +95,9 @@ impl AccumulatorHash for CustomHash {
     // used for deserialization, reads the hash from the reader
     //
     // if you don't want to use serialization, you can just return an error here.
-    fn read<R>(reader: &mut R) -> std::io::Result<Self>
+    fn read<R>(reader: &mut R) -> io::Result<Self>
     where
-        R: std::io::Read,
+        R: io::Read,
     {
         let mut h = [0u8; 32];
         reader.read_exact(&mut h)?;
