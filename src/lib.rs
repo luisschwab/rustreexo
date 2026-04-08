@@ -23,7 +23,6 @@
 //!  * [`mem_forest`]: an in-memory forest accumulator. It keeps track of every leaf in the forest. It can both verify and
 //!    generate inclusion proofs for any leaf in the forest.
 
-#![cfg_attr(any(bench), feature(test))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
@@ -67,8 +66,17 @@ pub mod prelude {
     pub use bitcoin_io as io;
     pub use bitcoin_io::Read;
     pub use bitcoin_io::Write;
-    pub use hashbrown::HashMap;
-    pub use hashbrown::HashSet;
+    use foldhash::quality::FixedState;
+
+    pub type HashMap<K, V> = hashbrown::HashMap<K, V, FixedState>;
+    pub type HashSet<T> = hashbrown::HashSet<T, FixedState>;
+
+    pub fn new_hash_map<K, V>() -> HashMap<K, V> {
+        HashMap::with_hasher(FixedState::default())
+    }
+    pub fn new_hash_set<T>() -> HashSet<T> {
+        HashSet::with_hasher(FixedState::default())
+    }
 }
 
 #[cfg(feature = "std")]
