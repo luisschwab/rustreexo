@@ -1,16 +1,18 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
 name: Zizmor
 on:
     push:
     pull_request:
     schedule:
-        - cron: "0 12 * * 1" # Monday, 12:00:00 UTC
+        - cron: "0 12 * * 1" # Every monday at 12:00 UTC (mid-day)
     workflow_dispatch:
 
 permissions: {}
 
 jobs:
     zizmor:
-        name: Action Static Analysis
+        name: GitHub Action Static Analysis
         runs-on: ubuntu-latest
         steps:
             - name: Checkout repository
@@ -18,8 +20,8 @@ jobs:
               with:
                   persist-credentials: false
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+            - name: Install uv
+              uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
             - name: Run zizmor
               run: uvx zizmor .
