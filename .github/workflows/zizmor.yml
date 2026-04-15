@@ -3,14 +3,14 @@ on:
     push:
     pull_request:
     schedule:
-        - cron: "0 12 * * 1" # Monday, 12:00:00 UTC
+        - cron: "0 12 * * 1" # Every monday at 12:00 UTC (mid-day)
     workflow_dispatch:
 
 permissions: {}
 
 jobs:
     zizmor:
-        name: Action Static Analysis
+        name: GitHub Action Static Analysis
         runs-on: ubuntu-latest
         steps:
             - name: Checkout repository
