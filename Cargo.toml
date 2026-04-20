@@ -73,10 +73,16 @@ nightly = "nightly-2026-03-18"
 examples = [
     "stump_modify",
     "stump_modify:-",
+    "stump_modify:with-serde std",
+    "stump_modify:with-serde",
     "proof_update",
     "proof_update:-",
+    "proof_update:with-serde std",
+    "proof_update:with-serde",
     "custom_hash",
     "custom_hash:-",
+    "custom_hash:with-serde std",
+    "custom_hash:with-serde",
 ]
 
 # Features to exclude from auto-discovery.
