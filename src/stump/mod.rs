@@ -29,6 +29,7 @@
 //! ```
 
 use alloc::collections::BTreeSet;
+use core::fmt;
 
 #[cfg(feature = "with-serde")]
 use serde::Deserialize;
@@ -39,6 +40,7 @@ use super::node_hash::AccumulatorHash;
 use super::node_hash::BitcoinNodeHash;
 use super::proof::NodesAndRootsOldNew;
 use super::proof::Proof;
+use super::proof::ProofError;
 use super::util;
 use crate::prelude::*;
 
@@ -54,7 +56,7 @@ pub struct UpdateData<Hash: AccumulatorHash> {
     pub(crate) new_del: Vec<(u64, Hash)>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 /// The error kinds returned by Stump's methods
 pub enum StumpError {
     /// User passed in a proof that doesn't have any elements, but a non-zero list of
@@ -67,12 +69,28 @@ pub enum StumpError {
 
     /// The provided proof is invalid. This will happen during proof verification and stump
     /// modification.
-    InvalidProof(String),
+    InvalidProof(ProofError),
+}
+
+impl fmt::Display for StumpError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::EmptyProof => write!(f, "proof has no elements but targets are non-empty"),
+            Self::Io(kind) => write!(f, "I/O error: {kind:?}"),
+            Self::InvalidProof(e) => write!(f, "invalid proof: {e}"),
+        }
+    }
 }
 
 impl From<io::Error> for StumpError {
     fn from(err: io::Error) -> Self {
         Self::Io(err.kind())
+    }
+}
+
+impl From<ProofError> for StumpError {
+    fn from(err: ProofError) -> Self {
+        Self::InvalidProof(err)
     }
 }
 

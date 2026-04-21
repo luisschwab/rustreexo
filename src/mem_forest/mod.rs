@@ -39,6 +39,7 @@ use core::fmt::Formatter;
 use super::node_hash::AccumulatorHash;
 use super::node_hash::BitcoinNodeHash;
 use super::proof::Proof;
+use super::proof::ProofError;
 use super::util::detect_offset;
 use super::util::get_proof_positions;
 use super::util::is_left_niece;
@@ -448,7 +449,7 @@ impl<Hash: AccumulatorHash> MemForest<Hash> {
         Ok(())
     }
 
-    pub fn verify(&self, proof: &Proof<Hash>, del_hashes: &[Hash]) -> Result<bool, String> {
+    pub fn verify(&self, proof: &Proof<Hash>, del_hashes: &[Hash]) -> Result<bool, ProofError> {
         let roots = self
             .roots
             .iter()

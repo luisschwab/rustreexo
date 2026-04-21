@@ -58,7 +58,9 @@
 //! ```
 
 use alloc::vec::IntoIter;
+use core::fmt;
 use core::fmt::Debug;
+use core::fmt::Formatter;
 use core::iter::Peekable;
 
 #[cfg(feature = "with-serde")]
@@ -76,6 +78,45 @@ use super::util::tree_rows;
 use crate::prelude::*;
 use crate::util::translate;
 use crate::MAX_FOREST_ROWS;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+/// Errors that can occur when working with a [Proof].
+pub enum ProofError {
+    /// An I/O error occurred while (de)serializing the proof.
+    Io(io::ErrorKind),
+
+    /// A target position could not be parsed during deserialization.
+    InvalidTarget,
+
+    /// A hash could not be parsed during deserialization.
+    InvalidHash,
+
+    /// A sibling node required to compute the root hash is missing from the proof.
+    MissingSibling(u64),
+
+    /// A proof hash required to update the proof to a new state is missing.
+    MissingProofHash(u64),
+}
+
+impl fmt::Display for ProofError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io(kind) => write!(f, "I/O error: {kind:?}"),
+            Self::InvalidTarget => write!(f, "failed to parse proof target"),
+            Self::InvalidHash => write!(f, "failed to parse proof hash"),
+            Self::MissingSibling(pos) => write!(f, "missing sibling for node at position {pos}"),
+            Self::MissingProofHash(pos) => {
+                write!(f, "missing proof hash for position {pos}")
+            }
+        }
+    }
+}
+
+impl From<io::Error> for ProofError {
+    fn from(err: io::Error) -> Self {
+        Self::Io(err.kind())
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
@@ -126,6 +167,7 @@ impl Default for Proof<BitcoinNodeHash> {
 /// This alias is used when we need to return the nodes and roots for a proof
 /// if we are not concerned with deleting those elements.
 pub(crate) type NodesAndRootsCurrent<Hash> = (Vec<(u64, Hash)>, Vec<Hash>);
+
 /// This is used when we need to return the nodes and roots for a proof
 /// if we are concerned with deleting those elements. The difference is that
 /// we need to retun the old and updatated roots in the accumulator.
@@ -275,7 +317,7 @@ impl<Hash: AccumulatorHash> Proof<Hash> {
         del_hashes: &[Hash],
         roots: &[Hash],
         num_leaves: u64,
-    ) -> Result<bool, String> {
+    ) -> Result<bool, ProofError> {
         if self.targets.is_empty() {
             return Ok(true);
         }
@@ -322,7 +364,7 @@ impl<Hash: AccumulatorHash> Proof<Hash> {
         del_hashes: &[Hash],
         new_targets: &[u64],
         num_leaves: u64,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, ProofError> {
         let forest_rows = tree_rows(num_leaves);
         let old_proof_positions = get_proof_positions(&self.targets, num_leaves, forest_rows);
         let needed_positions = get_proof_positions(new_targets, num_leaves, forest_rows);
@@ -401,20 +443,18 @@ impl<Hash: AccumulatorHash> Proof<Hash> {
     /// // An empty proof is only 16 bytes of zeros, meaning no targets and no hashes
     /// assert_eq!(Proof::default(), deserialized_proof);
     /// ```
-    pub fn deserialize<Source: Read>(mut buf: Source) -> Result<Self, String> {
-        let targets_len =
-            read_u64(&mut buf).map_err(|reason| format!("io error {reason}"))? as usize;
+    pub fn deserialize<Source: Read>(mut buf: Source) -> Result<Self, ProofError> {
+        let targets_len = read_u64(&mut buf).map_err(|e| ProofError::Io(e.kind()))? as usize;
 
         let mut targets = Vec::with_capacity(targets_len);
         for _ in 0..targets_len {
-            targets.push(read_u64(&mut buf).map_err(|_| "Failed to parse target")?);
+            targets.push(read_u64(&mut buf).map_err(|_| ProofError::InvalidTarget)?);
         }
 
-        let hashes_len =
-            read_u64(&mut buf).map_err(|reason| format!("io error {reason}"))? as usize;
+        let hashes_len = read_u64(&mut buf).map_err(|e| ProofError::Io(e.kind()))? as usize;
         let mut hashes = Vec::with_capacity(hashes_len);
         for _ in 0..hashes_len {
-            let hash = Hash::read(&mut buf).map_err(|_| "Failed to parse hash")?;
+            let hash = Hash::read(&mut buf).map_err(|_| ProofError::InvalidHash)?;
             hashes.push(hash);
         }
 
@@ -439,7 +479,7 @@ impl<Hash: AccumulatorHash> Proof<Hash> {
         &self,
         del_hashes: &[(Hash, Hash)],
         num_leaves: u64,
-    ) -> Result<NodesAndRootsOldNew<Hash>, String> {
+    ) -> Result<NodesAndRootsOldNew<Hash>, ProofError> {
         // Where all the root hashes that we've calculated will go to.
         let total_rows = util::tree_rows(num_leaves);
 
@@ -487,10 +527,10 @@ impl<Hash: AccumulatorHash> Proof<Hash> {
             let sibling = next_pos | 1;
             let (sibling_pos, (sibling_hash_old, sibling_hash_new)) =
                 Self::get_next(&computed, &nodes, &mut computed_index, &mut provided_index)
-                    .ok_or(format!("Missing sibling for {next_pos}"))?;
+                    .ok_or(ProofError::MissingSibling(next_pos))?;
 
             if sibling_pos != sibling {
-                return Err(format!("Missing sibling for {next_pos}"));
+                return Err(ProofError::MissingSibling(next_pos));
             }
 
             let parent_hash = match (next_hash_new.is_empty(), sibling_hash_new.is_empty()) {
@@ -526,7 +566,7 @@ impl<Hash: AccumulatorHash> Proof<Hash> {
         &self,
         del_hashes: &[Hash],
         num_leaves: u64,
-    ) -> Result<NodesAndRootsCurrent<Hash>, String> {
+    ) -> Result<NodesAndRootsCurrent<Hash>, ProofError> {
         // Where all the root hashes that we've calculated will go to.
         let total_rows = util::tree_rows(num_leaves);
 
@@ -575,10 +615,10 @@ impl<Hash: AccumulatorHash> Proof<Hash> {
             let sibling = next_pos | 1;
             let (sibling_pos, sibling_hash) =
                 Self::get_next(&computed, &nodes, &mut computed_index, &mut provided_index)
-                    .ok_or(format!("Missing sibling for {next_pos}"))?;
+                    .ok_or(ProofError::MissingSibling(next_pos))?;
 
             if sibling_pos != sibling {
-                return Err(format!("Missing sibling for {next_pos}"));
+                return Err(ProofError::MissingSibling(next_pos));
             }
 
             let parent_hash = AccumulatorHash::parent_hash(&next_hash, &sibling_hash);
@@ -634,7 +674,7 @@ impl<Hash: AccumulatorHash> Proof<Hash> {
         block_targets: Vec<u64>,
         remembers: Vec<u64>,
         update_data: UpdateData<Hash>,
-    ) -> Result<(Self, Vec<Hash>), String> {
+    ) -> Result<(Self, Vec<Hash>), ProofError> {
         let (proof_after_deletion, cached_hashes) = self.update_proof_remove(
             block_targets,
             cached_hashes,
@@ -662,7 +702,7 @@ impl<Hash: AccumulatorHash> Proof<Hash> {
         new_nodes: Vec<(u64, Hash)>,
         before_num_leaves: u64,
         to_destroy: Vec<u64>,
-    ) -> Result<(Self, Vec<Hash>), String> {
+    ) -> Result<(Self, Vec<Hash>), ProofError> {
         // Combine the hashes with the targets.
         let orig_targets_with_hash: Vec<(u64, Hash)> = self
             .targets
@@ -732,7 +772,7 @@ impl<Hash: AccumulatorHash> Proof<Hash> {
                 // This node must be in either new_nodes or in the old proof, otherwise we can't
                 // update our proof
                 if !new_proof.iter().any(|(proof_pos, _)| *proof_pos == pos) {
-                    return Err(format!("Missing position {pos}"));
+                    return Err(ProofError::MissingProofHash(pos));
                 }
             }
         }
@@ -784,7 +824,7 @@ impl<Hash: AccumulatorHash> Proof<Hash> {
         cached_hashes: Vec<Hash>,
         updated: Vec<(u64, Hash)>,
         num_leaves: u64,
-    ) -> Result<(Self, Vec<Hash>), String> {
+    ) -> Result<(Self, Vec<Hash>), ProofError> {
         let total_rows = util::tree_rows(num_leaves);
 
         let targets_with_hash: Vec<(u64, Hash)> = self
@@ -866,7 +906,7 @@ impl<Hash: AccumulatorHash> Proof<Hash> {
         old_positions: &Vec<(u64, Hash)>,
         num_leaves: u64,
         append_roots: bool,
-    ) -> Result<Vec<(u64, Hash)>, String> {
+    ) -> Result<Vec<(u64, Hash)>, ProofError> {
         let total_rows = util::tree_rows(num_leaves);
         let mut new_positions = vec![];
 
@@ -888,8 +928,13 @@ impl<Hash: AccumulatorHash> Proof<Hash> {
                     continue;
                 }
 
-                if util::is_ancestor(util::parent(*target, total_rows), next_pos, total_rows)? {
-                    next_pos = util::calc_next_pos(next_pos, *target, total_rows)?;
+                let is_ancestor =
+                    util::is_ancestor(util::parent(*target, total_rows), next_pos, total_rows)
+                        .map_err(|_| ProofError::MissingSibling(next_pos))?;
+
+                if is_ancestor {
+                    next_pos = util::calc_next_pos(next_pos, *target, total_rows)
+                        .map_err(|_| ProofError::MissingSibling(next_pos))?;
                 }
             }
 
@@ -897,6 +942,7 @@ impl<Hash: AccumulatorHash> Proof<Hash> {
                 new_positions.push((next_pos, *hash));
             }
         }
+
         new_positions.sort();
         Ok(new_positions)
     }
