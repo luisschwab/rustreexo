@@ -8,6 +8,10 @@ updates:
           time: "00:00"
       cooldown:
           default-days: 14
+      groups:
+          all:
+            patterns: ["*"]
+
 
     - package-ecosystem: "cargo"
       directory: "/"
@@ -16,3 +20,6 @@ updates:
           time: "00:00"
       cooldown:
           default-days: 14
+      groups:
+          all:
+            patterns: ["*"]
