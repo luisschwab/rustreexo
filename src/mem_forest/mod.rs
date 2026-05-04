@@ -640,7 +640,7 @@ impl<Hash: AccumulatorHash> MemForest<Hash> {
                         Ok(val) => {
                             if pos >= 100 {
                                 output[h as usize * 2].push_str(
-                                    format!("{:#02x}:{} ", pos, &val.to_string()[..2]).as_str(),
+                                    format!("{:x}:{} ", pos, &val.to_string()[..2]).as_str(),
                                 );
                             } else {
                                 output[h as usize * 2].push_str(
