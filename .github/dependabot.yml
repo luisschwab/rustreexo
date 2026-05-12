@@ -1,16 +1,25 @@
 version: 2
+
 updates:
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "monthly"
-      time: "00:00"
-    cooldown:
-      default-days: 14
-  - package-ecosystem: "cargo"
-    directory: "/"
-    schedule:
-      interval: "monthly"
-      time: "00:00"
-    cooldown:
-      default-days: 14
+    - package-ecosystem: "github-actions"
+      directory: "/"
+      schedule:
+          interval: "monthly"
+          time: "00:00"
+      cooldown:
+          default-days: 14
+      groups:
+          all:
+            patterns: ["*"]
+
+
+    - package-ecosystem: "cargo"
+      directory: "/"
+      schedule:
+          interval: "monthly"
+          time: "00:00"
+      cooldown:
+          default-days: 14
+      groups:
+          all:
+            patterns: ["*"]
