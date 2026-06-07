@@ -15,28 +15,25 @@ _default:
 
 [doc: "Run benchmarks: accumulator, proof, stump"]
 bench BENCH="":
-    cargo bench {{ if BENCH != "" { "--bench " + BENCH } else { "" } }}
+    cargo rbmt run bench {{ if BENCH != "" { "--bench " + BENCH } else { "" } }}
 
 [doc: "Check code formatting, compilation, and linting"]
 check:
     cargo rbmt fmt --check
     cargo rbmt lint
-    cargo rbmt docs
-    RUSTFLAGS="--cfg=bench" cargo +nightly check --benches
+    cargo rbmt docsrs
 
 [doc: "Checks whether all commits in this branch are signed"]
 check-sigs:
-    bash contrib/check-signatures.sh
+    bash contrib/check-commit-signatures.sh
 
 [doc: "Generate documentation"]
 doc:
-    cargo rbmt docs
-    cargo doc --no-deps
+    cargo rbmt docsrs
 
 [doc: "Generate and open documentation"]
 doc-open:
-    cargo rbmt docs
-    cargo doc --no-deps --open
+    cargo rbmt docsrs --open
 
 [doc: "Format code"]
 fmt:
@@ -49,13 +46,19 @@ lock:
 [doc: "Run tests across all toolchains and lockfiles"]
 test:
     rustup target add thumbv7m-none-eabi
-    cargo rbmt test --toolchain stable --lock-file recent
-    cargo rbmt test --toolchain stable --lock-file minimal
+    cargo rbmt test --toolchain stable --lockfile recent
+    cargo rbmt test --toolchain stable --lockfile minimal
 
 [doc: "Run no_std build check with the MSRV toolchain (1.74.0)"]
 test-no-std:
     rustup target add thumbv7m-none-eabi --toolchain 1.74.0
-    cargo rbmt test --toolchain msrv --lock-file minimal
+    cargo rbmt test --toolchain msrv --lockfile minimal
 
 [doc: "Run pre-push suite: lock, fmt, check, test, and test-no-std"]
-pre-push: lock fmt check check-sigs test test-no-std
+pre-push:
+    @just check-sigs
+    @just lock
+    @just fmt
+    @just check
+    @just test
+    @just test-no-std
