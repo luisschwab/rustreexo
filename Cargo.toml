@@ -39,7 +39,7 @@ serde_json = { version = "1.0.81" }
 # These pins are necessary for `Cargo-minimal.lock`:
 clap = { version = "4.5.61" } # blame: criterion
 clap_builder = { version = "4.5.61" } # blame: criterion
-clap_lex = { version = "1.0.1" } # blame: criterion
+clap_lex = { version = "=1.0.1" } # blame: criterion
 regex = { version = "1.10.0" } # blame: criterion
 
 [[bench]]
