@@ -4,8 +4,9 @@ on:
     push:
     pull_request:
     schedule:
-        - cron: "0 12 * * *" # Every day at 12:00 UTC (mid-day)
+        - cron: "0 12 * * *" # Daily @ 12:00:00
     workflow_dispatch:
+
 permissions: {}
 env:
     CARGO_TERM_COLOR: always
