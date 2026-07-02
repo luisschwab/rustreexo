@@ -59,10 +59,6 @@ pub struct UpdateData<Hash: AccumulatorHash> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// The error kinds returned by Stump's methods
 pub enum StumpError {
-    /// User passed in a proof that doesn't have any elements, but a non-zero list of
-    /// targets.
-    EmptyProof,
-
     /// An IO error occurred, this is usually due to a failure in reading or writing
     /// the Stump to a reader/writer. This error will be returned during (de)serialization.
     Io(io::ErrorKind),
@@ -75,7 +71,6 @@ pub enum StumpError {
 impl fmt::Display for StumpError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::EmptyProof => write!(f, "proof has no elements but targets are non-empty"),
             Self::Io(kind) => write!(f, "I/O error: {kind:?}"),
             Self::InvalidProof(e) => write!(f, "invalid proof: {e}"),
         }
@@ -238,11 +233,9 @@ impl<Hash: AccumulatorHash> Stump<Hash> {
 
         for root in self.roots.iter() {
             if let Some(pos) = computed_roots.iter().position(|(old, _new)| old == root) {
-                let (old_root, new_root) = computed_roots.remove(pos);
-                if old_root == *root {
-                    new_roots.push(new_root);
-                    continue;
-                }
+                let (_, new_root) = computed_roots.remove(pos);
+                new_roots.push(new_root);
+                continue;
             }
 
             new_roots.push(*root);
@@ -251,7 +244,7 @@ impl<Hash: AccumulatorHash> Stump<Hash> {
         // If there are still roots to be added, it means that the proof is invalid
         // as we should have consumed all the roots.
         if !computed_roots.is_empty() {
-            return Err(StumpError::EmptyProof);
+            return Err(StumpError::InvalidProof(ProofError::RootsMismatch));
         }
 
         let (roots, updated, destroyed) = Self::add(new_roots, utxos, self.leaves);
