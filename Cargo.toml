@@ -39,7 +39,7 @@ serde_json = { version = "1.0.81" }
 # These pins are necessary for `Cargo-minimal.lock`:
 clap = { version = "4.5.61" } # blame: criterion
 clap_builder = { version = "4.5.61" } # blame: criterion
-clap_lex = { version = "1.0.1" } # blame: criterion
+clap_lex = { version = "=1.0.1" } # blame: criterion
 regex = { version = "1.10.0" } # blame: criterion
 
 [[bench]]
@@ -61,39 +61,35 @@ use_self = "warn"
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bench)'] }
 
 [package.metadata.rbmt.toolchains]
-stable = "1.94.0"
-nightly = "nightly-2026-03-18"
+stable = "1.96.0"
+nightly = "nightly-2026-06-23"
 
 [package.metadata.rbmt.test]
-# Examples to run with different feature configurations.
-#
-# Supported formats:
-# * "name" - runs with default features.
-# * "name:-" - runs with no-default-features.
-# * "name:feature1 feature2" - runs with specific features.
-examples = [
-    "stump_modify",
-    "stump_modify:-",
-    "stump_modify:with-serde std",
-    "stump_modify:with-serde",
-    "proof_update",
-    "proof_update:-",
-    "proof_update:with-serde std",
-    "proof_update:with-serde",
-    "custom_hash",
-    "custom_hash:-",
-    "custom_hash:with-serde std",
-    "custom_hash:with-serde",
-]
+# Test all possible auto-discovered feature combinations.
+sample_strategy = "all"
 
 # Features to exclude from auto-discovery.
 # Use for internal or alias features that should not be tested in isolation.
 exclude_features = ["default"]
 
-# Always test specific feature combinations.
-exact_features = [
-    ["with-serde", "std"],
-    ["with-serde"],
+# Examples to run with different feature configurations.
+#
+# Supported formats:
+# * "name" - runs with no-default-features.
+# * "name:feature1 feature2" - runs with specific features.
+examples = [
+    "stump_modify",
+    "stump_modify:std",
+    "stump_modify:with-serde",
+    "stump_modify:with-serde std",
+    "proof_update",
+    "proof_update:std",
+    "proof_update:with-serde",
+    "proof_update:with-serde std",
+    "custom_hash",
+    "custom_hash:std",
+    "custom_hash:with-serde",
+    "custom_hash:with-serde std",
 ]
 
 # Allow packages of different versions in the dependency tree.
