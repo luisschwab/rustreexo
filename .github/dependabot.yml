@@ -7,7 +7,7 @@ updates:
           interval: "monthly"
           time: "00:00"
       cooldown:
-          default-days: 14
+          default-days: 60
       groups:
           all:
             patterns: ["*"]
@@ -19,7 +19,7 @@ updates:
           interval: "monthly"
           time: "00:00"
       cooldown:
-          default-days: 14
+          default-days: 60
       groups:
           all:
             patterns: ["*"]
