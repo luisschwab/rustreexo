@@ -42,7 +42,7 @@ fn main() {
     // Get a subset of the proof, for the first UTXO only
     let p1 = p.get_proof_subset(&cached_hashes, &[0], s.leaves).unwrap();
 
-    assert_eq!(s.verify(&p1, &cached_hashes), Ok(true));
+    assert_eq!(s.verify(&p1, &[cached_hashes[0]]), Ok(true));
 
     // Assume we have a block that (beyond coinbase) spends our UTXO `0` and creates 7 new UTXOs
     // We'll remove `0` as it got spent, and add 1..7 to our cache.

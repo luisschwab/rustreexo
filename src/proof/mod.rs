@@ -91,11 +91,17 @@ pub enum ProofError {
     /// A hash could not be parsed during deserialization.
     InvalidHash,
 
+    /// The computed roots don't match current accumulator.
+    RootsMismatch,
+
     /// A sibling node required to compute the root hash is missing from the proof.
     MissingSibling(u64),
 
     /// A proof hash required to update the proof to a new state is missing.
     MissingProofHash(u64),
+
+    /// Target count must be equal to del hashes
+    DelHashesTargetsMismatch { targets: usize, del_hashes: usize },
 }
 
 impl fmt::Display for ProofError {
@@ -107,6 +113,15 @@ impl fmt::Display for ProofError {
             Self::MissingSibling(pos) => write!(f, "missing sibling for node at position {pos}"),
             Self::MissingProofHash(pos) => {
                 write!(f, "missing proof hash for position {pos}")
+            }
+            Self::DelHashesTargetsMismatch {
+                targets,
+                del_hashes,
+            } => {
+                write!(f, "the number of targets must be equal to del_hashes. targets={targets} del_hashes={del_hashes}")
+            }
+            Self::RootsMismatch => {
+                write!(f, "the computed roots don't match current accumulator.")
             }
         }
     }
@@ -480,6 +495,13 @@ impl<Hash: AccumulatorHash> Proof<Hash> {
         del_hashes: &[(Hash, Hash)],
         num_leaves: u64,
     ) -> Result<NodesAndRootsOldNew<Hash>, ProofError> {
+        if self.targets.len() != del_hashes.len() {
+            return Err(ProofError::DelHashesTargetsMismatch {
+                targets: self.targets.len(),
+                del_hashes: del_hashes.len(),
+            });
+        }
+
         // Where all the root hashes that we've calculated will go to.
         let total_rows = util::tree_rows(num_leaves);
 
@@ -567,6 +589,13 @@ impl<Hash: AccumulatorHash> Proof<Hash> {
         del_hashes: &[Hash],
         num_leaves: u64,
     ) -> Result<NodesAndRootsCurrent<Hash>, ProofError> {
+        if self.targets.len() != del_hashes.len() {
+            return Err(ProofError::DelHashesTargetsMismatch {
+                targets: self.targets.len(),
+                del_hashes: del_hashes.len(),
+            });
+        }
+
         // Where all the root hashes that we've calculated will go to.
         let total_rows = util::tree_rows(num_leaves);
 
