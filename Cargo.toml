@@ -42,6 +42,7 @@ clap_lex = { version = "=1.0.1" } # blame: criterion v0.5.1
 crossbeam-epoch = { version = "0.9.20" } # blame: criterion v0.5.1 (RUSTSEC-2026-0204)
 regex = { version = "1.10.0" } # blame: criterion v0.5.1
 bumpalo = { version = "3.11.1" } # blame: criterion v0.5.1 (RUSTSEC-2022-0078)
+rayon = { version = "1.5.3" } # blame: criterion v0.5.1 (RUSTSEC-2022-0021, RUSTSEC-2023-0045)
 
 [[bench]]
 name = "accumulator"
