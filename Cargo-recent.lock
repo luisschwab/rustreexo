@@ -555,6 +555,7 @@ version = "0.5.0"
 dependencies = [
  "bitcoin-io",
  "bitcoin_hashes",
+ "bumpalo",
  "clap",
  "clap_builder",
  "clap_lex",
