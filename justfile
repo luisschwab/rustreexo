@@ -47,8 +47,8 @@ test:
     cargo rbmt test --toolchain stable --lockfile recent
     cargo rbmt test --toolchain stable --lockfile minimal
 
-[doc: "Install cargo-rbmt tools"]
-tools:
+[doc: "Setup cargo-rbmt tools"]
+setup:
     RBMT_LOG_LEVEL=progress cargo rbmt tools
 
 [doc: "Run ShellCheck"]
