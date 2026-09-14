@@ -13,6 +13,29 @@ env:
     RUST_BACKTRACE: 1
 
 jobs:
+    bisectability:
+        name: PR Bisectability
+        runs-on: ubuntu-latest
+        if: github.event_name == 'pull_request'
+
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+              with:
+                  persist-credentials: false
+                  fetch-depth: 0
+                  ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+            - name: Setup Rust Cache
+              uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+
+            - name: Setup cargo-rbmt
+              uses: $/.github/actions/setup-rbmt
+
+            - name: Assert PR Bisectability
+              shell: bash
+              run: cargo rbmt run --baseline "${{ github.event.pull_request.base.sha }}" -- test
+
     check:
         name: Check - ${{ matrix.name }}
         runs-on: ubuntu-latest
