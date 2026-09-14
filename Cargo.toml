@@ -12,6 +12,10 @@ edition = "2021"
 rust-version = "1.74.0" # MSRV
 autobenches = false
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 default = ["std"]
 std = ["bitcoin_hashes/std", "hex-conservative/std", "hashbrown/default-hasher"]
@@ -56,10 +60,6 @@ regex = { version = "1.10.0" } # blame: criterion v0.5.1
 bumpalo = { version = "3.11.1" } # blame: criterion v0.5.1 (RUSTSEC-2022-0078)
 rayon = { version = "1.5.3" } # blame: criterion v0.5.1 (RUSTSEC-2022-0021, RUSTSEC-2023-0045)
 errno-dragonfly = { version = "0.1.2" } # blame: criterion v0.5.1 (RUSTSEC-2025-0121)
-
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.rbmt]
 toolchains = { stable = "1.97.1", nightly = "nightly-2026-08-04" }
