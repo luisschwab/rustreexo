@@ -24,7 +24,7 @@ doc = false
 bench = false
 
 [[bin]]
-name = "proof_corruption"
+name = "proof-corruption"
 path = "fuzz_targets/proof_corruption.rs"
 test = false
 doc = false
