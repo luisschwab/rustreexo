@@ -480,8 +480,7 @@ impl<Hash: AccumulatorHash> MemForest<Hash> {
             let parent_left = parent
                 .upgrade()
                 .and_then(|parent| parent.left.clone().into_inner())
-                .ok_or("Could not upgrade parent")?
-                .clone();
+                .ok_or("Could not upgrade parent")?;
 
             // If the current node is a left child, we left-shift the indicator
             // and leave the LSB as 0

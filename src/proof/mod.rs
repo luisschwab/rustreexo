@@ -1204,11 +1204,11 @@ mod tests {
                 .unwrap();
             let (cached_proof, cached_hashes) = cached_proof
                 .update(
-                    cached_hashes.clone(),
+                    cached_hashes,
                     &utxos,
                     &case_values.update.proof.targets,
                     case_values.remembers.clone(),
-                    updated.clone(),
+                    updated,
                 )
                 .unwrap();
 
