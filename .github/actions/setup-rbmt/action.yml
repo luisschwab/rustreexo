@@ -1,20 +1,21 @@
 name: Setup cargo-rbmt
-description: Install cargo-rbmt
+description: Install cargo-rbmt from crates.io
 
 runs:
-    using: "composite"
+    using: composite
 
     steps:
         - name: Install cargo-rbmt
           shell: bash
           run: |
-            RBMT_VERSION=$(cat rbmt-version)
-            cargo install cargo-rbmt --version "$RBMT_VERSION" --locked
+              RBMT_VERSION=$(grep -A 1 '^\[package\.metadata\.rbmt\]$' Cargo.toml | grep -E -o '[0-9]+([.][0-9]+)*')
+              echo "Installing cargo-rbmt@v${RBMT_VERSION} from crates.io"
+              cargo install cargo-rbmt --version "$RBMT_VERSION" --locked
 
-        - name: Install Rust Toolchains
+        - name: Install Toolchains
           shell: bash
           run: cargo rbmt toolchains
 
-        - name: Intall cargo-rbmt Tools
+        - name: Install Tools
           shell: bash
           run: cargo rbmt tools

@@ -68,18 +68,30 @@ A `justfile` is provided for convenience. Run `just` to see available commands:
 > A Rust implementation of Utreexo
 
 Available recipes:
-    bench BENCH="" # Run benchmarks: accumulator, proof, stump
-    check          # Check code formatting, compilation, and linting [alias: c]
-    check-sigs     # Checks whether all commits in this branch are signed [alias: cs]
-    doc            # Generate documentation [alias: d]
-    doc-open       # Generate and open documentation [alias: do]
-    fmt            # Format code [alias: f]
-    lock           # Regenerate Cargo-recent.lock and Cargo-minimal.lock [alias: l]
-    pre-push       # Run pre-push suite: lock, fmt, check, test, and test-no-std [alias: p]
-    shellcheck     # Run ShellCheck
-    test           # Run tests across all toolchains and lockfiles [alias: t]
-    tools          # Install cargo-rbmt tools
-    zizmor         # Run Zizmor Static Analysis
+    [Dependencies]
+    lock                          # Generate Lockfiles [alias: l]
+
+    [Documentation]
+    docs                          # Generate Documentation [alias: d]
+    docs-open                     # Generate and Open Documentation
+
+    [Quality]
+    audit                         # Audit dependencies [alias: a]
+    check                         # Check Formatting, Linting and Documentation [alias: c]
+    check-sigs                    # Check Commit Signatures
+    fmt                           # Format Code [alias: f]
+    pre-push                      # Run pre-push suite: lock, fmt, check, and test [alias: p]
+    shellcheck                    # Run ShellCheck
+    zizmor                        # Run Zizmor Static Analysis
+
+    [Setup]
+    setup-tools-toolchains        # Setup Tools and Toolchains
+    update-tools-toolchains       # Update Tools and Toolchains
+
+    [Testing]
+    bench BENCH=""                # Run Benchmarks: accumulator, proof, stump
+    fuzz TARGET="list" TIME="600" # Run Fuzz Targets: list, all, or TARGET
+    test                          # Run Tests [alias: t]
 ```
 
 ## Minimum Supported Rust Version (MSRV)

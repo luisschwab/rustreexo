@@ -1193,9 +1193,9 @@ impl<Hash: AccumulatorHash> Pollard<Hash> {
         self.leaf_map.remove(&node.hash());
         // we are deleting a root, just write an empty hash where it was
         if node.aunt.borrow().is_none() {
-            for i in 0..64 {
-                if self.roots[i].as_ref().is_some_and(|root| root == node) {
-                    self.roots[i] = Some(Rc::new(PollardNode::default()));
+            for root in &mut self.roots {
+                if root.as_ref().is_some_and(|root| root == node) {
+                    *root = Some(Rc::new(PollardNode::default()));
                     return Ok(());
                 }
             }
@@ -1207,15 +1207,15 @@ impl<Hash: AccumulatorHash> Pollard<Hash> {
 
         if node.grandparent().is_none() {
             // my parent is a root, I'm a root now
-            for i in 0..64 {
+            for root in &mut self.roots {
                 let aunt = node.aunt().ok_or(PollardError::AuntNotFound)?;
 
-                let Some(root) = self.roots[i].as_ref() else {
+                let Some(root_node) = root.as_ref() else {
                     continue;
                 };
 
-                if root.hash() == aunt.hash() {
-                    self.roots[i] = Some(sibling);
+                if root_node.hash() == aunt.hash() {
+                    *root = Some(sibling);
                     return Ok(());
                 }
             }

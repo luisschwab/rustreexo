@@ -1,4 +1,6 @@
-name: Rust CI
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: Rust
 
 on:
     push:
@@ -7,9 +9,33 @@ on:
 permissions: {}
 env:
     CARGO_TERM_COLOR: always
+    RBMT_LOG_LEVEL: progress
     RUST_BACKTRACE: 1
 
 jobs:
+    bisectability:
+        name: PR Bisectability
+        runs-on: ubuntu-latest
+        if: github.event_name == 'pull_request'
+
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+              with:
+                  persist-credentials: false
+                  fetch-depth: 0
+                  ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+            - name: Setup Rust Cache
+              uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+
+            - name: Setup cargo-rbmt
+              uses: $/.github/actions/setup-rbmt
+
+            - name: Assert PR Bisectability
+              shell: bash
+              run: cargo rbmt run --baseline "${{ github.event.pull_request.base.sha }}" -- test
+
     check:
         name: Check - ${{ matrix.name }}
         runs-on: ubuntu-latest
@@ -17,12 +43,12 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - name: Check Formatting
+                    - name: Documentation
+                      task: docs
+                    - name: Formatting
                       task: fmt --check
-                    - name: Lint
+                    - name: Linting
                       task: lint
-                    - name: Build Documentation
-                      task: docsrs
 
         steps:
             - name: Checkout Repository
@@ -30,13 +56,14 @@ jobs:
               with:
                   persist-credentials: false
 
-            - name: Setup Build Cache
+            - name: Setup Rust Cache
               uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
             - name: Setup cargo-rbmt
               uses: $/.github/actions/setup-rbmt
 
-            - name: Run ${{ matrix.task }}
+            - name: Check ${{ matrix.name }}
+              shell: bash
               run: cargo rbmt ${{ matrix.task }}
 
     test:
@@ -62,11 +89,12 @@ jobs:
               with:
                   persist-credentials: false
 
-            - name: Setup Build Cache
+            - name: Setup Rust Cache
               uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
             - name: Setup cargo-rbmt
               uses: $/.github/actions/setup-rbmt
 
             - name: Run Tests
+              shell: bash
               run: cargo rbmt test --toolchain ${{ matrix.toolchain }} --lockfile ${{ matrix.lockfile }}

@@ -1,0 +1,153 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: Cross
+
+on:
+    push:
+    pull_request:
+
+permissions:
+    contents: read
+
+env:
+    CARGO_TERM_COLOR: always
+    RBMT_LOG_LEVEL: progress
+    RUST_BACKTRACE: 1
+
+jobs:
+    cross-native:
+        name: "${{ matrix.target }} [native]"
+        runs-on: ${{ matrix.runner }}
+        timeout-minutes: 45
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - runner: macos-26
+                      target: aarch64-apple-darwin
+
+                    - runner: ubuntu-24.04-arm
+                      target: aarch64-unknown-linux-gnu
+
+                    - runner: windows-2025-vs2026
+                      target: x86_64-pc-windows-msvc
+
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+              with:
+                  persist-credentials: false
+
+            - name: Setup Rust Cache
+              uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+
+            - name: Setup cargo-rbmt
+              uses: $/.github/actions/setup-rbmt
+
+            - name: Run Tests
+              shell: bash
+              run: cargo rbmt test
+
+    cross-linux:
+        name: "${{ matrix.target }} [${{ matrix.execution }}]"
+        runs-on: ubuntu-latest
+        timeout-minutes: 45
+        env:
+            CROSS_TARGET: ${{ matrix.target }}
+            CROSS_LINKER: ${{ matrix.gcc }}
+            CROSS_PACKAGES: ${{ matrix.packages }}
+            CROSS_RUNNER: ${{ matrix.runner }}
+
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - target: i686-unknown-linux-gnu
+                      gcc: i686-linux-gnu-gcc
+                      packages: gcc-i686-linux-gnu libc6-dev-i386-cross
+                      runner: qemu-i386 -L /usr/i686-linux-gnu
+                      execution: qemu
+
+                    - target: arm-unknown-linux-gnueabi
+                      gcc: arm-linux-gnueabi-gcc
+                      packages: gcc-arm-linux-gnueabi libc6-dev-armel-cross
+                      runner: qemu-arm -L /usr/arm-linux-gnueabi
+                      execution: qemu
+
+                    - target: armv7-unknown-linux-gnueabihf
+                      gcc: arm-linux-gnueabihf-gcc
+                      packages: gcc-arm-linux-gnueabihf libc6-dev-armhf-cross
+                      runner: qemu-arm -L /usr/arm-linux-gnueabihf
+                      execution: qemu
+
+                    - target: powerpc64le-unknown-linux-gnu
+                      gcc: powerpc64le-linux-gnu-gcc
+                      packages: gcc-powerpc64le-linux-gnu libc6-dev-ppc64el-cross
+                      runner: qemu-ppc64le -L /usr/powerpc64le-linux-gnu
+                      execution: qemu
+
+                    - target: powerpc-unknown-linux-gnu
+                      gcc: powerpc-linux-gnu-gcc
+                      packages: gcc-powerpc-linux-gnu libc6-dev-powerpc-cross
+                      runner: qemu-ppc -L /usr/powerpc-linux-gnu
+                      execution: qemu
+
+                    - target: riscv64gc-unknown-linux-gnu
+                      gcc: riscv64-linux-gnu-gcc
+                      packages: gcc-riscv64-linux-gnu libc6-dev-riscv64-cross
+                      runner: qemu-riscv64 -L /usr/riscv64-linux-gnu
+                      execution: qemu
+
+                    - target: s390x-unknown-linux-gnu
+                      gcc: s390x-linux-gnu-gcc
+                      packages: gcc-s390x-linux-gnu libc6-dev-s390x-cross
+                      runner: qemu-s390x -L /usr/s390x-linux-gnu
+                      execution: qemu
+
+                    - target: x86_64-unknown-linux-musl
+                      gcc: musl-gcc
+                      packages: musl-tools
+                      runner: ""
+                      execution: native
+
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+              with:
+                  persist-credentials: false
+
+            - name: Setup Rust Cache
+              uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+              with:
+                  key: cross-${{ matrix.target }}
+
+            - name: Setup cargo-rbmt
+              uses: $/.github/actions/setup-rbmt
+
+            - name: Install Cross Compiler and QEMU
+              shell: bash
+              run: |
+                  read -r -a packages <<< "$CROSS_PACKAGES"
+                  if [[ -n "$CROSS_RUNNER" ]]; then
+                      packages+=(qemu-user)
+                  fi
+                  sudo apt-get update
+                  sudo apt-get install --yes --no-install-recommends "${packages[@]}"
+
+            - name: Install Rust Target
+              shell: bash
+              run: |
+                  stable=$(cargo rbmt toolchains --stable)
+                  rustup target add --toolchain "$stable" "$CROSS_TARGET"
+
+            - name: Run Tests
+              shell: bash
+              # Run unit and integration tests, excluding cross-compiled doctests.
+              # Explicit QEMU runners avoid depending on host binfmt_misc registration.
+              run: |
+                  target_env=$(printf '%s' "$CROSS_TARGET" | tr 'a-z-' 'A-Z_')
+                  export "CARGO_TARGET_${target_env}_LINKER=$CROSS_LINKER"
+                  if [[ -n "$CROSS_RUNNER" ]]; then
+                      export "CARGO_TARGET_${target_env}_RUNNER=$CROSS_RUNNER"
+                  fi
+                  cargo rbmt test --toolchain stable --lockfile recent -- --target "$CROSS_TARGET" --tests
